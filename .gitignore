@@ -1,0 +1,20 @@
+# Bảo mật (API Key)
+.env
+.env.*
+
+# Môi trường ảo & Cache Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cấu hình trình soạn thảo (VS Code)
+.vscode/
+
+# Tệp hệ điều hành (macOS / Linux / Windows)
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+*~

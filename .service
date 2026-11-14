@@ -1,0 +1,15 @@
+[Unit]
+Description=Robot
+After=network-online.target
+
+[Service]
+ExecStart=/home/pi/robot/venv/bin/python /home/pi/robot/main.py
+Restart=always
+RestartSec=5
+
+User=pi
+WorkingDirectory=/home/pi/robot
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=multi-user.target
