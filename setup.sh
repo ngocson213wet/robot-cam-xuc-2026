@@ -1,80 +1,73 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$DIR"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CURRENT_USER="$(whoami)"
+SERVICE_NAME="robot.service"
 
-# 0. Kiểm tra đủ file trước (thiếu thì dừng, không bật service hỏng)
-THIEU=0
-for f in main.py online.py sound.py emotion.py anh.py face.py chao.mp3 dandar.mp3 nhac/normal2.mp3 \
-         "anh1/Group 48.png" "anh1/Group 46.png" "anh1/Group 73.png" "anh1/Group 65.png"; do
-    [ -e "$f" ] || { echo "!! THIẾU FILE: $f"; THIEU=1; }
-done
-[ "$THIEU" = 0 ] || { echo "Chép đủ file rồi chạy lại."; exit 1; }
+echo "=== 1. Cập nhật hệ thống & cài đặt thư viện nền (Audio/OpenCV) ==="
+sudo apt-get update
+sudo apt-get install -y python3-pip python3-venv python3-dev \
+    libsdl2-dev libsdl2-mixer-2.0-0 libportaudio2 ffmpeg libgl1
 
-# 1. API key
-if [ -f .env ] && grep -q '^GEMINI_API_KEY=.\+' .env; then
-    echo ">> .env đã có GEMINI_API_KEY, giữ nguyên"
-else
-    KEY=""
-    while [ -z "$KEY" ]; do
-        read -rsp "Nhập GEMINI_API_KEY (dán vào, màn hình sẽ không hiện chữ): " KEY
-        echo
-    done
-    touch .env
-    sed -i '/^GEMINI_API_KEY=/d' .env
-    printf 'GEMINI_API_KEY=%s\n' "$KEY" >> .env
-    chmod 600 .env
-    echo ">> Đã lưu vào .env"
+echo "=== 2. Kiểm tra & mở rộng Swap (chống tràn RAM 4GB khi cài/chạy AI) ==="
+SWAP_SIZE=$(free -m | awk '/^Swap:/ {print $2}')
+if [ "$SWAP_SIZE" -lt 2048 ]; then
+    echo "Đang mở rộng Swap lên 2048MB..."
+    if [ -f /etc/dphys-swapfile ]; then
+        sudo dphys-swapfile swapoff || true
+        sudo sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
+        sudo dphys-swapfile setup
+        sudo dphys-swapfile swapon
+    fi
 fi
 
-# 2. Gói hệ thống
-sudo apt update
-sudo apt install -y python3-venv python3-psutil python3-pygame python3-numpy \
-                    alsa-utils mpg123 v4l-utils
+echo "=== 3. Tạo môi trường ảo venv & cài đặt requirements.txt ==="
+cd "$PROJECT_DIR"
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
 
-# 3. Quyền truy cập loa, camera, màn hình
-sudo usermod -aG audio,video,render "$USER"
-
-# 4. venv + gói pip
-python3 -m venv --system-site-packages venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+if [ -f "requirements.txt" ]; then
+    pip install --no-cache-dir -r requirements.txt
+else
+    echo "Cảnh báo: Không tìm thấy file requirements.txt!"
+fi
 
-# 5. Kiểm tra nhanh
-python - <<'PY'
-import cv2, pygame, psutil, numpy
-from google import genai
-print(">> import OK, OpenCV", cv2.__version__, "CascadeClassifier:", hasattr(cv2, "CascadeClassifier"))
-PY
-ls /dev/video* >/dev/null 2>&1 && echo ">> Thấy camera: $(ls /dev/video* | tr '\n' ' ')" \
-                               || echo "!! CHƯA thấy camera (/dev/video*)"
-aplay -l 2>/dev/null | grep -q card && echo ">> Thấy thiết bị âm thanh" \
-                                    || echo "!! CHƯA thấy thiết bị âm thanh"
+echo "=== 4. Kiểm tra file cấu hình .env ==="
+if [ ! -f ".env" ]; then
+    cat <<EOF > .env
+# Điền API Key và cấu hình của bạn vào đây
+GEMINI_API_KEY=your_api_key_here
+EOF
+    echo "Đã tạo file .env mẫu. Hãy mở file .env để điền API Key trước khi chạy!"
+fi
 
-# 6. Service tự chạy khi bật nguồn
-sudo tee /etc/systemd/system/robot.service > /dev/null <<UNIT
+echo "=== 5. Cài đặt dịch vụ tự khởi động ($SERVICE_NAME) ==="
+sudo bash -c "cat <<EOF > /etc/systemd/system/$SERVICE_NAME
 [Unit]
-Description=Robot
+Description=Robot Cam Xuc NCKH 2026
 After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
-User=$USER
-SupplementaryGroups=audio video render
-WorkingDirectory=$DIR
-EnvironmentFile=$DIR/.env
-ExecStart=$DIR/venv/bin/python main.py
-Restart=on-failure
+Type=simple
+User=$CURRENT_USER
+WorkingDirectory=$PROJECT_DIR
+EnvironmentFile=-$PROJECT_DIR/.env
+ExecStart=$PROJECT_DIR/venv/bin/python$PROJECT_DIR/main.py
+Restart=always
 RestartSec=5
-TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
-UNIT
-sudo systemctl daemon-reload
-sudo systemctl enable --now robot
+EOF"
 
-echo ">> Xong. Xem log: journalctl -u robot -f"
-echo ">> Nên chạy 'sudo reboot' 1 lần để quyền audio/video có hiệu lực hoàn toàn."
+sudo systemctl daemon-reload
+sudo systemctl enable "$SERVICE_NAME"
+
+echo "=== Cài đặt hoàn tất! ==="
+echo "- Chạy thử thủ công: source venv/bin/activate && python main.py"
+echo "- Khởi động dịch vụ nền: sudo systemctl start $SERVICE_NAME"
