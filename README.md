@@ -22,14 +22,16 @@ robot-cam-xuc-2026/
 ├── requirements.txt     # Danh sách thư viện Python cần thiết
 ├── setup.sh             # Script tự động cài đặt môi trường và systemd service
 └── .service             # Cấu hình mẫu cho dịch vụ chạy tự động
-
-1. Tải mã nguồn về máy: git clone [https://github.com/ngocson213wet/robot-cam-xuc-2026.git](https://github.com/ngocson213wet/robot-cam-xuc-2026.git)
-cd robot-cam-xuc-2026. 
-2. Chạy script cài đặt tự động
+Bước 1: Cập nhật và cài đặt git cho Raspberry Pi
+sudo apt update && sudo apt install git -y
+Bước 2: Clone đúng đường dẫn kho mã nguồn và mở thư mục dự án
+git clone https://github.com/ngocson213wet/robot-cam-xuc-2026.git
+cd robot-cam-xuc-2026
+Bước 3: Chạy tập lệnh cài đặt môi trường (nếu chưa thiết lập venv và thư viện trên Pi)
+Trong cây thư mục dự án của bạn đã có sẵn tệp setup.sh, bạn có thể cấp quyền và chạy tự động:
 chmod +x setup.sh
 ./setup.sh
-3. Cấu hình biến môi trường:
-nano .env
+
 * Vận hành & Quản lý dịch vụ
 source venv/bin/activate
 python main.py
