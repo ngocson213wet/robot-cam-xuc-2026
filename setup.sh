@@ -53,11 +53,14 @@ After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
+[Service]
 Type=simple
 User=$CURRENT_USER
+SupplementaryGroups=video
 WorkingDirectory=$PROJECT_DIR
 EnvironmentFile=-$PROJECT_DIR/.env
-ExecStart=$PROJECT_DIR/venv/bin/python$PROJECT_DIR/main.py
+ExecStartPre=/bin/sleep 3
+ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/main.py
 Restart=always
 RestartSec=5
 
