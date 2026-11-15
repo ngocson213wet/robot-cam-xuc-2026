@@ -36,8 +36,10 @@ chmod +x setup.sh
 source venv/bin/activate
 python main.py
 *Quản lý chế độ tự chạy cùng hệ thống (systemd):
-sudo systemctl start robot.service     # Bật robot ngay lập tức
-sudo systemctl status robot.service    # Kiểm tra trạng thái hoạt động
-sudo systemctl restart robot.service   # Khởi động lại sau khi sửa code
-sudo systemctl stop robot.service      # Dừng chạy ngầm
-journalctl -u robot.service -f         # Xem log thời gian thực
+1.Cấp quyền ghi màn hình /dev/fb0 cho user pi (tránh lỗi không hiện mặt robot khi tự khởi động):
+sudo usermod -aG video pi
+2.Bật chế độ tự chạy khi mở nguồn và khởi động lại dịch vụ ngay bây giờ:
+sudo systemctl enable robot.service
+sudo systemctl restart robot.service
+3.Kiểm tra trạng thái hoạt động:
+sudo systemctl status robot.service
