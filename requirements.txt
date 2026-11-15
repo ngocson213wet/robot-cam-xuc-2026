@@ -2,3 +2,4 @@ opencv-python-headless<5
 google-genai
 gTTS>=2.5.1
 psutil
+pygame
